@@ -16,8 +16,13 @@ git clone git@github.com:me-is-mukul/KIWI.git
 cd KIWI
 javac -d . src/*.java errors/*.java
 chmod +x kiwi
-echo "export PATH=\$PATH:$(pwd)" >> ~/.bashrc
-source ~/.bashrc
+if [ -n "$ZSH_VERSION" ]; then
+  echo "export PATH=\$PATH:$(pwd)" >> ~/.zshrc
+  source ~/.zshrc
+else
+  echo "export PATH=\$PATH:$(pwd)" >> ~/.bashrc
+  source ~/.bashrc
+fi
 
 ```
 
