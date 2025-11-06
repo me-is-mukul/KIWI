@@ -1,0 +1,8 @@
+#!/bin/bash
+# KIWI launcher script for Unix systems
+
+# Determine the directory of this script
+DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Run the Java program
+java -cp "$DIR" src.KIWI "$@"

@@ -1,8 +1,6 @@
 package src;
-import java.io.*;
-import java.util.*;
 import errors.*;
-import src.Colors;
+import java.io.*;
 
 class VCSHANDLER {
     public static void initRepository() {
