@@ -1,5 +1,4 @@
-// version control system in java
-
+package src;
 import java.io.*;
 import java.util.*;
 import errors.*;
@@ -20,7 +19,7 @@ class VCSHANDLER {
                 File headFile = new File(".kiwi/HEAD");
                 headFile.createNewFile();
 
-                System.out.println("Initialized empty KIWI repository in " + kiwiDir.getAbsolutePath());
+                System.out.println("Initialized KIWI repository");
             } else {
                 System.err.println("Failed to create .kiwi directory!");
             }
@@ -54,7 +53,7 @@ public class KIWI {
         VCSHANDLER vcs = new VCSHANDLER();
 
         if (args.length == 0) {
-            System.out.println("No command provided...\n Try 'kiwi init', 'kiwi add', or 'kiwi commit.. ^3^'");
+            System.out.println("No command provided...\n Try 'kiwi init', 'kiwi add', or 'kiwi commit'\n UwU");
             return;
         }
 
