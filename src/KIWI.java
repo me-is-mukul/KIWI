@@ -2,13 +2,14 @@ package src;
 import java.io.*;
 import java.util.*;
 import errors.*;
+import src.Colors;
 
 class VCSHANDLER {
     public static void initRepository() {
         File kiwiDir = new File(".kiwi");
         try {
             if (kiwiDir.exists()) {
-                throw new RepoAlreadyExistsException("Repository already initialized in this directory!");
+                throw new RepoAlreadyExistsException(Colors.BLUE+"Repository already initialized in this directory!"+Colors.RESET);
             }
             if (kiwiDir.mkdir()) {
                 new File(".kiwi/objects").mkdirs();
@@ -19,15 +20,15 @@ class VCSHANDLER {
                 File headFile = new File(".kiwi/HEAD");
                 headFile.createNewFile();
 
-                System.out.println("Initialized KIWI repository");
+                System.out.println(Colors.GREEN+"Initialized KIWI repository"+Colors.RESET);
             } else {
-                System.err.println("Failed to create .kiwi directory!");
+                System.err.println(Colors.RED+"Failed to create .kiwi directory!"+Colors.RESET);
             }
 
         } catch (RepoAlreadyExistsException e) {
-            System.err.println("[KIWI ERROR] " + e.getMessage());
+            System.err.println(Colors.YELLOW+"[KIWI ERROR] " + e.getMessage()+Colors.RESET);
         } catch (IOException e) {
-            System.err.println("[KIWI ERROR] Could not initialize repository: " + e.getMessage());
+            System.err.println(Colors.YELLOW+"[KIWI ERROR] Could not initialize repository: " + e.getMessage()+Colors.RESET);
         }
     }
 
@@ -53,7 +54,7 @@ public class KIWI {
         VCSHANDLER vcs = new VCSHANDLER();
 
         if (args.length == 0) {
-            System.out.println("No command provided...\n Try 'kiwi init', 'kiwi add', or 'kiwi commit'\n UwU");
+            System.out.println(Colors.RED+"No command provided...\n Try 'kiwi init', 'kiwi add', or 'kiwi commit'\n UwU"+Colors.RESET);
             return;
         }
 
@@ -76,7 +77,7 @@ public class KIWI {
                 vcs.log();
                 break;
             default:
-                System.out.println("Unknown command: " + command);
+                System.out.println(Colors.YELLOW+"Unknown command: " + command+Colors.RESET);
         }
     }
 }
