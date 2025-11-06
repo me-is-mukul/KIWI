@@ -1,6 +1,9 @@
 package src;
 import errors.*;
 import java.io.*;
+import java.nio.file.*;
+import java.security.NoSuchAlgorithmException;
+import utils.*;
 
 class VCSHANDLER {
     public static void initRepository() {
@@ -29,10 +32,106 @@ class VCSHANDLER {
             System.err.println(Colors.YELLOW+"[KIWI ERROR] Could not initialize repository: " + e.getMessage()+Colors.RESET);
         }
     }
+    
+    private static String updateIndex(String content, String filename, String hash) {
+        StringBuilder sb = new StringBuilder();
+        boolean replaced = false;
+        String normalizedFile = normalizePath(filename);
 
+        for (String line : content.split("\n")) {
+            line = line.trim();
+            if (line.isEmpty()) continue;
 
+            String[] parts = line.split(" ", 2);
+            if (parts.length < 2) continue;
+
+            String existingFile = normalizePath(parts[0]);
+
+            if (existingFile.equals(normalizedFile)) {
+                sb.append(normalizedFile).append(" ").append(hash).append("\n");
+                replaced = true;
+            } else {
+                sb.append(line).append("\n");
+            }
+        }
+
+        if (!replaced) sb.append(normalizedFile).append(" ").append(hash).append("\n");
+        return sb.toString();
+    }
+
+    private static String normalizePath(String path) {
+        try {
+            return new File(path).getCanonicalPath().replace("\\", "/").trim();
+        } catch (IOException e) {
+            return path.replace("\\", "/").trim();
+        }
+    }
+
+    private static void addSingleFile(String filename) {
+        File file = new File(filename);
+
+        if (!file.exists() || file.isDirectory()) {
+            System.err.println(Colors.RED + "[KIWI ERROR] Skipping invalid file: " + filename + Colors.RESET);
+            return;
+        }
+
+        try {
+            String hash = HashUtils.getFileHash(file);
+
+            File objectFile = new File(".kiwi/objects/" + hash);
+            Files.copy(file.toPath(), objectFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+
+            File indexFile = new File(".kiwi/index/stage.index");
+            indexFile.createNewFile();
+
+            String existingContent = "";
+            if (indexFile.length() > 0)
+                existingContent = Files.readString(indexFile.toPath());
+
+            String updatedContent = updateIndex(existingContent, filename, hash);
+            Files.writeString(indexFile.toPath(), updatedContent);
+
+        } catch (IOException | NoSuchAlgorithmException e) {
+            System.err.println(Colors.RED + "[KIWI ERROR] Could not stage file: " + e.getMessage() + Colors.RESET);
+        }
+    }
+
+    private static void addAllFilesRecursively(File dir) {
+        File[] files = dir.listFiles();
+        if (files == null) return;
+
+        for (File file : files) {
+            String name = file.getName();
+
+            // Skip .kiwi folder and hidden files
+            if (name.equals(".kiwi") || name.startsWith(".")) continue;
+
+            if (file.isDirectory()) {
+                addAllFilesRecursively(file); // recursion
+            } else {
+                addSingleFile(file.getPath());
+            }
+        }
+    }
+    
     public static void add(String[] args) {
-        System.out.println("Added files to staging area");
+        if (!new File(".kiwi").exists()) {
+            System.err.println(Colors.RED + "[KIWI ERROR] Repository not initialized.\nRun 'kiwi init' first." + Colors.RESET);
+            return;
+        }
+        if (args.length < 2) {
+            System.out.println(Colors.YELLOW + "Usage: kiwi add <filename> [more_files] OR kiwi add ." + Colors.RESET);
+            return;
+        }
+        if (args[1].equals(".")) {
+            addAllFilesRecursively(new File("."));
+            System.out.println(Colors.GREEN+"Staging completed."+Colors.RESET);
+            return;
+        }
+        for (int i = 1; i < args.length; i++) {
+            addSingleFile(args[i]);
+            System.out.println(Colors.GREEN+"Staging completed."+Colors.RESET);
+        }
     }
 
     public static void commit(String[] args) {
@@ -42,6 +141,7 @@ class VCSHANDLER {
     public static void status() {
         System.out.println("Displaying files status");
     }
+    
     public static void log() {
         System.out.println("Displaying commit logs");
     }
