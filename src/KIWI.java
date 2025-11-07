@@ -3,6 +3,7 @@ import errors.*;
 import java.io.*;
 import java.nio.file.*;
 import java.security.NoSuchAlgorithmException;
+import java.util.*;
 import utils.*;
 
 class VCSHANDLER {
@@ -164,17 +165,95 @@ class VCSHANDLER {
         }
     }
 
+    public static void status(File dir, Map<String, String> indexMap, ArrayList<String> modified, ArrayList<String> untracked) {
+        File[] files = dir.listFiles();
+        if (files == null) return;
+
+        for(File file : files){
+            String name = file.getName();
+            if(name.equals(".kiwi") || name.startsWith(".")) continue;
+
+            if(file.isDirectory()){
+                status(file, indexMap, modified, untracked);
+            } else {
+                try {
+                String normalizedPath = normalizePath(file.getPath());
+                String hash = HashUtils.getFileHash(file);
+
+                if (indexMap.containsKey(normalizedPath)) {
+                    String storedHash = indexMap.get(normalizedPath);
+                    if (!storedHash.equals(hash)) {
+                        modified.add(file.getName());
+                    }
+                } else {
+                    untracked.add(file.getName());
+                }
+
+            } catch (IOException | NoSuchAlgorithmException e) {
+                System.err.println("[KIWI ERROR] Could not hash file: " + file.getName());
+            }
+            }
+        }
+    }
+
+    public static void status() {
+        if (!new File(".kiwi").exists()) {
+            System.err.println(Colors.RED + "[KIWI ERROR] Repository not initialized.\nRun 'kiwi init' first." + Colors.RESET);
+            return;
+        }
+        File indexFile = new File(".kiwi/index/stage.index");
+
+        if (!indexFile.exists()) {
+            System.out.println(Colors.YELLOW + "No files have been staged yet!" + Colors.RESET);
+            return;
+        }
+        Map<String, String> indexMap = new HashMap<>();
+        try {
+            List<String> lines = Files.readAllLines(indexFile.toPath());
+            for (String line : lines) {
+                line = line.trim();
+                if (line.isEmpty()) continue;
+                String[] parts = line.split(" ", 2);
+                if (parts.length < 2) continue;
+                String filename = normalizePath(parts[0]);
+                String hash = parts[1].trim();
+                indexMap.put(filename, hash);
+            }
+        } catch (IOException e) {
+            System.err.println("[KIWI ERROR] Could not read index file.");
+            return;
+        }
+
+        ArrayList<String> modified = new ArrayList<>();
+        ArrayList<String> untracked = new ArrayList<>();
+
+        status(new File("."), indexMap, modified, untracked);
+
+
+        System.out.println();
+        System.out.println(Colors.CYAN + "======================================" + Colors.RESET);
+        if (!modified.isEmpty()) {
+                System.out.println(Colors.YELLOW + "\nModified files:" + Colors.RESET);
+                for (String file : modified)
+                    System.out.println(Colors.YELLOW+"   " + file+Colors.RESET);
+        }
+        if (!untracked.isEmpty()) {
+            System.out.println(Colors.RED + "\nUntracked files:" + Colors.RESET);
+            for (String file : untracked)
+                System.out.println(Colors.RED+"   " + file+Colors.RESET);
+        }
+
+        System.out.println(Colors.CYAN + "======================================" + Colors.RESET);
+    }
+
+    public static void log() {
+        System.out.println("Displaying commit logs");
+    }
+
     public static void commit(String[] args) {
         System.out.println("Committed changes to repository");
     }
 
-    public static void status() {
-        System.out.println("Displaying files status");
-    }
-    
-    public static void log() {
-        System.out.println("Displaying commit logs");
-    }
 }
 
 public class KIWI {
