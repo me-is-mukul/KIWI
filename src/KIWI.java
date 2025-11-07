@@ -78,9 +78,7 @@ class VCSHANDLER {
         try {
             String hash = HashUtils.getFileHash(file);
 
-            File objectFile = new File(".kiwi/objects/" + hash);
-            Files.copy(file.toPath(), objectFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-
+            // Ensure index exists and read current content to find old hash (if any)
             File indexFile = new File(".kiwi/index/stage.index");
             indexFile.createNewFile();
 
@@ -88,6 +86,38 @@ class VCSHANDLER {
             if (indexFile.length() > 0)
                 existingContent = Files.readString(indexFile.toPath());
 
+            String normalizedFile = normalizePath(filename);
+            String oldHash = null;
+            for (String line : existingContent.split("\n")) {
+                String l = line.trim();
+                if (l.isEmpty()) continue;
+                String[] parts = l.split(" ", 2);
+                if (parts.length < 2) continue;
+                String existingFile = normalizePath(parts[0]);
+                if (existingFile.equals(normalizedFile)) {
+                    oldHash = parts[1].trim();
+                    break;
+                }
+            }
+
+            // If there is an old object for this file and the hash changed, delete the old object
+            if (oldHash != null && !oldHash.equals(hash)) {
+                File oldObjectFile = new File(".kiwi/objects/" + oldHash);
+                if (oldObjectFile.exists()) {
+                    try {
+                        Files.delete(oldObjectFile.toPath());
+                    } catch (IOException ex) {
+                        // non-fatal: log but continue to write new object
+                        System.err.println(Colors.YELLOW + "[KIWI WARNING] Could not delete old object: " + ex.getMessage() + Colors.RESET);
+                    }
+                }
+            }
+
+            // Write new object (replace if same hash file exists)
+            File objectFile = new File(".kiwi/objects/" + hash);
+            Files.copy(file.toPath(), objectFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+
+            // Update index with new hash for the file
             String updatedContent = updateIndex(existingContent, filename, hash);
             Files.writeString(indexFile.toPath(), updatedContent);
 
