@@ -204,7 +204,7 @@ class VCSHANDLER {
         File indexFile = new File(".kiwi/index/stage.index");
 
         if (!indexFile.exists()) {
-            System.out.println(Colors.YELLOW + "No files have been staged yet!" + Colors.RESET);
+            System.out.println(Colors.RED + "No files have been staged yet!" + Colors.RESET);
             return;
         }
         Map<String, String> indexMap = new HashMap<>();
@@ -232,6 +232,9 @@ class VCSHANDLER {
 
         System.out.println();
         System.out.println(Colors.CYAN + "======================================" + Colors.RESET);
+        if (modified.isEmpty() && untracked.isEmpty()) {
+            System.out.println(Colors.GREEN + "ALL GOOD" + Colors.RESET);
+        }
         if (!modified.isEmpty()) {
                 System.out.println(Colors.YELLOW + "\nModified files:" + Colors.RESET);
                 for (String file : modified)
