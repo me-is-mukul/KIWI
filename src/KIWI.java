@@ -68,6 +68,46 @@ class VCSHANDLER {
         }
     }
 
+    private static void removeDeletedFilesFromIndex() {
+        File indexFile = new File(".kiwi/index/stage.index");
+        if (!indexFile.exists()) return;
+
+        try {
+            List<String> lines = Files.readAllLines(indexFile.toPath());
+            StringBuilder updatedContent = new StringBuilder();
+
+            for (String line : lines) {
+                if (line.trim().isEmpty()) continue;
+                String[] parts = line.split(" ", 2);
+                if (parts.length < 2) continue;
+
+                String filename = normalizePath(parts[0]);
+                String hash = parts[1].trim();
+                File f = new File(filename);
+
+                if (!f.exists()) {
+                    // File is deleted → remove from index + objects
+                    File objectFile = new File(".kiwi/objects/" + hash);
+                    if (objectFile.exists()) {
+                        try {
+                            Files.delete(objectFile.toPath());
+                        } catch (IOException ex) {
+                            System.err.println(Colors.YELLOW + "[KIWI WARNING] Could not delete old object: " + ex.getMessage() + Colors.RESET);
+                        }
+                    }
+                } else {
+                    updatedContent.append(filename).append(" ").append(hash).append("\n");
+                }
+            }
+
+            // Write updated index back
+            Files.writeString(indexFile.toPath(), updatedContent.toString());
+
+        } catch (IOException e) {
+            System.err.println(Colors.RED + "[KIWI ERROR] Failed to clean deleted files from index: " + e.getMessage() + Colors.RESET);
+        }
+    }
+
     private static void addSingleFile(String filename) {
         File file = new File(filename);
 
@@ -150,6 +190,7 @@ class VCSHANDLER {
             System.err.println(Colors.RED + "[KIWI ERROR] Repository not initialized.\nRun 'kiwi init' first." + Colors.RESET);
             return;
         }
+        removeDeletedFilesFromIndex();
         if (args.length < 2) {
             System.out.println(Colors.YELLOW + "Usage: kiwi add <filename> [more_files] OR kiwi add ." + Colors.RESET);
             return;
@@ -165,16 +206,15 @@ class VCSHANDLER {
         }
     }
 
-    public static void status(File dir, Map<String, String> indexMap, ArrayList<String> modified, ArrayList<String> untracked) {
+    public static void status(File dir, Map<String, String> indexMap, ArrayList<String> deletedfiles, ArrayList<String> modified, ArrayList<String> untracked) {
         File[] files = dir.listFiles();
         if (files == null) return;
 
         for(File file : files){
             String name = file.getName();
             if(name.equals(".kiwi") || name.startsWith(".")) continue;
-
             if(file.isDirectory()){
-                status(file, indexMap, modified, untracked);
+                status(file, indexMap,deletedfiles, modified, untracked);
             } else {
                 try {
                 String normalizedPath = normalizePath(file.getPath());
@@ -226,8 +266,14 @@ class VCSHANDLER {
 
         ArrayList<String> modified = new ArrayList<>();
         ArrayList<String> untracked = new ArrayList<>();
-
-        status(new File("."), indexMap, modified, untracked);
+        ArrayList<String> deletedfiles = new ArrayList<>();
+        for (String filename : indexMap.keySet()) {
+            File f = new File(filename);
+            if (!f.exists()) {
+                deletedfiles.add(f.getName());
+            }
+        }
+        status(new File("."), indexMap,deletedfiles ,modified, untracked);
 
 
         System.out.println();
@@ -239,6 +285,10 @@ class VCSHANDLER {
                 System.out.println(Colors.YELLOW + "\nModified files:" + Colors.RESET);
                 for (String file : modified)
                     System.out.println(Colors.YELLOW+"   " + file+Colors.RESET);
+        }if (!deletedfiles.isEmpty()) {
+            System.out.println(Colors.BLUE + "\ndeleted files:" + Colors.RESET);
+            for (String file : deletedfiles)
+                System.out.println(Colors.BLUE+"   " + file+Colors.RESET);
         }
         if (!untracked.isEmpty()) {
             System.out.println(Colors.RED + "\nUntracked files:" + Colors.RESET);
