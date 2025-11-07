@@ -6,35 +6,8 @@ import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import utils.*;
 
-class VCSHANDLER {
-    public static void initRepository() {
-        File kiwiDir = new File(".kiwi");
-        try {
-            if (kiwiDir.exists()) {
-                throw new RepoAlreadyExistsException(Colors.BLUE+"Repository already initialized in this directory!"+Colors.RESET);
-            }
-            if (kiwiDir.mkdir()) {
-                new File(".kiwi/objects").mkdirs();
-                new File(".kiwi/commits").mkdirs();
-                new File(".kiwi/index").mkdirs();
-
-                // Create HEAD file
-                File headFile = new File(".kiwi/HEAD");
-                headFile.createNewFile();
-
-                System.out.println(Colors.GREEN+"Initialized KIWI repository"+Colors.RESET);
-            } else {
-                System.err.println(Colors.RED+"Failed to create .kiwi directory!"+Colors.RESET);
-            }
-
-        } catch (RepoAlreadyExistsException e) {
-            System.err.println(Colors.YELLOW+"[KIWI ERROR] " + e.getMessage()+Colors.RESET);
-        } catch (IOException e) {
-            System.err.println(Colors.YELLOW+"[KIWI ERROR] Could not initialize repository: " + e.getMessage()+Colors.RESET);
-        }
-    }
-    
-    private static String updateIndex(String content, String filename, String hash) {
+class Helper{
+    protected static String updateIndex(String content, String filename, String hash) {
         StringBuilder sb = new StringBuilder();
         boolean replaced = false;
         String normalizedFile = normalizePath(filename);
@@ -60,7 +33,7 @@ class VCSHANDLER {
         return sb.toString();
     }
 
-    private static String normalizePath(String path) {
+    protected static String normalizePath(String path) {
         try {
             return new File(path).getCanonicalPath().replace("\\", "/").trim();
         } catch (IOException e) {
@@ -68,7 +41,7 @@ class VCSHANDLER {
         }
     }
 
-    private static void removeDeletedFilesFromIndex() {
+    protected static void removeDeletedFilesFromIndex() {
         File indexFile = new File(".kiwi/index/stage.index");
         if (!indexFile.exists()) return;
 
@@ -86,7 +59,6 @@ class VCSHANDLER {
                 File f = new File(filename);
 
                 if (!f.exists()) {
-                    // File is deleted → remove from index + objects
                     File objectFile = new File(".kiwi/objects/" + hash);
                     if (objectFile.exists()) {
                         try {
@@ -99,8 +71,6 @@ class VCSHANDLER {
                     updatedContent.append(filename).append(" ").append(hash).append("\n");
                 }
             }
-
-            // Write updated index back
             Files.writeString(indexFile.toPath(), updatedContent.toString());
 
         } catch (IOException e) {
@@ -108,7 +78,7 @@ class VCSHANDLER {
         }
     }
 
-    private static void addSingleFile(String filename) {
+    protected static void addSingleFile(String filename) {
         File file = new File(filename);
 
         if (!file.exists() || file.isDirectory()) {
@@ -118,8 +88,6 @@ class VCSHANDLER {
 
         try {
             String hash = HashUtils.getFileHash(file);
-
-            // Ensure index exists and read current content to find old hash (if any)
             File indexFile = new File(".kiwi/index/stage.index");
             indexFile.createNewFile();
 
@@ -140,26 +108,22 @@ class VCSHANDLER {
                     break;
                 }
             }
-
-            // If there is an old object for this file and the hash changed, delete the old object
             if (oldHash != null && !oldHash.equals(hash)) {
                 File oldObjectFile = new File(".kiwi/objects/" + oldHash);
                 if (oldObjectFile.exists()) {
                     try {
                         Files.delete(oldObjectFile.toPath());
                     } catch (IOException ex) {
-                        // non-fatal: log but continue to write new object
                         System.err.println(Colors.YELLOW + "[KIWI WARNING] Could not delete old object: " + ex.getMessage() + Colors.RESET);
                     }
                 }
             }
-
-            // Write new object (replace if same hash file exists)
             File objectFile = new File(".kiwi/objects/" + hash);
+          
             Files.copy(file.toPath(), objectFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-
-            // Update index with new hash for the file
+          
             String updatedContent = updateIndex(existingContent, filename, hash);
+          
             Files.writeString(indexFile.toPath(), updatedContent);
 
         } catch (IOException | NoSuchAlgorithmException e) {
@@ -167,21 +131,48 @@ class VCSHANDLER {
         }
     }
 
-    private static void addAllFilesRecursively(File dir) {
+    protected static void addAllFilesRecursively(File dir) {
         File[] files = dir.listFiles();
         if (files == null) return;
 
         for (File file : files) {
             String name = file.getName();
-
-            // Skip .kiwi folder and hidden files
             if (name.equals(".kiwi") || name.startsWith(".")) continue;
 
             if (file.isDirectory()) {
-                addAllFilesRecursively(file); // recursion
+                addAllFilesRecursively(file);
             } else {
                 addSingleFile(file.getPath());
             }
+        }
+    }
+    
+}
+
+class VCSHANDLER extends Helper {
+    public static void initRepository() {
+        File kiwiDir = new File(".kiwi");
+        try {
+            if (kiwiDir.exists()) {
+                throw new RepoAlreadyExistsException(Colors.BLUE+"Repository already initialized in this directory!"+Colors.RESET);
+            }
+            if (kiwiDir.mkdir()) {
+                new File(".kiwi/objects").mkdirs();
+                new File(".kiwi/commits").mkdirs();
+                new File(".kiwi/index").mkdirs();
+
+                File headFile = new File(".kiwi/HEAD");
+                headFile.createNewFile();
+
+                System.out.println(Colors.GREEN+"Initialized KIWI repository"+Colors.RESET);
+            } else {
+                System.err.println(Colors.RED+"Failed to create .kiwi directory!"+Colors.RESET);
+            }
+
+        } catch (RepoAlreadyExistsException e) {
+            System.err.println(Colors.YELLOW+"[KIWI ERROR] " + e.getMessage()+Colors.RESET);
+        } catch (IOException e) {
+            System.err.println(Colors.YELLOW+"[KIWI ERROR] Could not initialize repository: " + e.getMessage()+Colors.RESET);
         }
     }
     
@@ -263,7 +254,6 @@ class VCSHANDLER {
             System.err.println("[KIWI ERROR] Could not read index file.");
             return;
         }
-
         ArrayList<String> modified = new ArrayList<>();
         ArrayList<String> untracked = new ArrayList<>();
         ArrayList<String> deletedfiles = new ArrayList<>();
@@ -274,8 +264,6 @@ class VCSHANDLER {
             }
         }
         status(new File("."), indexMap,deletedfiles ,modified, untracked);
-
-
         System.out.println();
         System.out.println(Colors.CYAN + "======================================" + Colors.RESET);
         if (modified.isEmpty() && untracked.isEmpty()) {
@@ -295,7 +283,6 @@ class VCSHANDLER {
             for (String file : untracked)
                 System.out.println(Colors.RED+"   " + file+Colors.RESET);
         }
-
         System.out.println(Colors.CYAN + "======================================" + Colors.RESET);
     }
 
