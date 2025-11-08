@@ -1,4 +1,5 @@
 package src;
+
 import errors.*;
 import java.io.*;
 import java.nio.file.*;
@@ -6,7 +7,8 @@ import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import utils.*;
 
-class Helper{
+class Helper {
+
     protected static String updateIndex(String content, String filename, String hash) {
         StringBuilder sb = new StringBuilder();
         boolean replaced = false;
@@ -41,7 +43,7 @@ class Helper{
         }
     }
 
-    protected static void removeDeletedFilesFromIndex() {
+    protected static void removeDeletedFilesFromIndex() throws IndexCorruptedException {
         File indexFile = new File(".kiwi/index/stage.index");
         if (!indexFile.exists()) return;
 
@@ -61,11 +63,7 @@ class Helper{
                 if (!f.exists()) {
                     File objectFile = new File(".kiwi/objects/" + hash);
                     if (objectFile.exists()) {
-                        try {
-                            Files.delete(objectFile.toPath());
-                        } catch (IOException ex) {
-                            System.err.println(Colors.YELLOW + "[KIWI WARNING] Could not delete old object: " + ex.getMessage() + Colors.RESET);
-                        }
+                        Files.deleteIfExists(objectFile.toPath());
                     }
                 } else {
                     updatedContent.append(filename).append(" ").append(hash).append("\n");
@@ -74,16 +72,15 @@ class Helper{
             Files.writeString(indexFile.toPath(), updatedContent.toString());
 
         } catch (IOException e) {
-            System.err.println(Colors.RED + "[KIWI ERROR] Failed to clean deleted files from index: " + e.getMessage() + Colors.RESET);
+            throw new IndexCorruptedException(e.getMessage());
         }
     }
 
-    protected static void addSingleFile(String filename) {
+    protected static void addSingleFile(String filename) throws FileStagingException, ObjectWriteException {
         File file = new File(filename);
 
         if (!file.exists() || file.isDirectory()) {
-            System.err.println(Colors.RED + "[KIWI ERROR] Skipping invalid file: " + filename + Colors.RESET);
-            return;
+            throw new FileStagingException(filename, "File does not exist or is a directory.");
         }
 
         try {
@@ -108,30 +105,29 @@ class Helper{
                     break;
                 }
             }
+
+            // delete old object if file changed
             if (oldHash != null && !oldHash.equals(hash)) {
                 File oldObjectFile = new File(".kiwi/objects/" + oldHash);
-                if (oldObjectFile.exists()) {
-                    try {
-                        Files.delete(oldObjectFile.toPath());
-                    } catch (IOException ex) {
-                        System.err.println(Colors.YELLOW + "[KIWI WARNING] Could not delete old object: " + ex.getMessage() + Colors.RESET);
-                    }
-                }
+                Files.deleteIfExists(oldObjectFile.toPath());
             }
+
             File objectFile = new File(".kiwi/objects/" + hash);
-          
-            Files.copy(file.toPath(), objectFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-          
+            try {
+                Files.copy(file.toPath(), objectFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException e) {
+                throw new ObjectWriteException(hash, e.getMessage());
+            }
+
             String updatedContent = updateIndex(existingContent, filename, hash);
-          
             Files.writeString(indexFile.toPath(), updatedContent);
 
         } catch (IOException | NoSuchAlgorithmException e) {
-            System.err.println(Colors.RED + "[KIWI ERROR] Could not stage file: " + e.getMessage() + Colors.RESET);
+            throw new FileStagingException(filename, e.getMessage());
         }
     }
 
-    protected static void addAllFilesRecursively(File dir) {
+    protected static void addAllFilesRecursively(File dir) throws FileStagingException, ObjectWriteException {
         File[] files = dir.listFiles();
         if (files == null) return;
 
@@ -146,98 +142,103 @@ class Helper{
             }
         }
     }
-    
 }
 
+
 class VCSHANDLER extends Helper {
-    public static void initRepository() {
+
+    public static void initRepository() throws RepoAlreadyExistsException, CommitException {
         File kiwiDir = new File(".kiwi");
+
         try {
             if (kiwiDir.exists()) {
-                throw new RepoAlreadyExistsException(Colors.BLUE+"Repository already initialized in this directory!"+Colors.RESET);
+                throw new RepoAlreadyExistsException("Repository already initialized in this directory!");
             }
-            if (kiwiDir.mkdir()) {
-                new File(".kiwi/objects").mkdirs();
-                new File(".kiwi/commits").mkdirs();
-                new File(".kiwi/index").mkdirs();
-
-                File headFile = new File(".kiwi/HEAD");
-                headFile.createNewFile();
-
-                System.out.println(Colors.GREEN+"Initialized KIWI repository"+Colors.RESET);
-            } else {
-                System.err.println(Colors.RED+"Failed to create .kiwi directory!"+Colors.RESET);
+            if (!kiwiDir.mkdir()) {
+                throw new CommitException("Failed to create .kiwi directory!");
             }
 
-        } catch (RepoAlreadyExistsException e) {
-            System.err.println(Colors.YELLOW+"[KIWI ERROR] " + e.getMessage()+Colors.RESET);
+            new File(".kiwi/objects").mkdirs();
+            new File(".kiwi/commits").mkdirs();
+            new File(".kiwi/index").mkdirs();
+
+            new File(".kiwi/HEAD").createNewFile();
+
+            System.out.println(Colors.GREEN + "Initialized KIWI repository" + Colors.RESET);
+
         } catch (IOException e) {
-            System.err.println(Colors.YELLOW+"[KIWI ERROR] Could not initialize repository: " + e.getMessage()+Colors.RESET);
+            throw new CommitException("Could not initialize repository: " + e.getMessage());
         }
     }
-    
-    public static void add(String[] args) {
+
+    public static void add(String[] args)
+            throws RepoNotInitializedException, FileStagingException, ObjectWriteException, IndexCorruptedException {
+
         if (!new File(".kiwi").exists()) {
-            System.err.println(Colors.RED + "[KIWI ERROR] Repository not initialized.\nRun 'kiwi init' first." + Colors.RESET);
-            return;
+            throw new RepoNotInitializedException();
         }
+
         removeDeletedFilesFromIndex();
+
         if (args.length < 2) {
             System.out.println(Colors.YELLOW + "Usage: kiwi add <filename> [more_files] OR kiwi add ." + Colors.RESET);
             return;
         }
+
         if (args[1].equals(".")) {
             addAllFilesRecursively(new File("."));
-            System.out.println(Colors.GREEN+"Staging completed."+Colors.RESET);
+            System.out.println(Colors.GREEN + "Staging completed." + Colors.RESET);
             return;
         }
+
         for (int i = 1; i < args.length; i++) {
             addSingleFile(args[i]);
-            System.out.println(Colors.GREEN+"Staging completed."+Colors.RESET);
         }
+        System.out.println(Colors.GREEN + "Staging completed." + Colors.RESET);
     }
 
-    public static void status(File dir, Map<String, String> indexMap, ArrayList<String> deletedfiles, ArrayList<String> modified, ArrayList<String> untracked) {
+    public static void status(File dir, Map<String, String> indexMap,
+                              ArrayList<String> deletedfiles, ArrayList<String> modified, ArrayList<String> untracked) {
         File[] files = dir.listFiles();
         if (files == null) return;
 
-        for(File file : files){
+        for (File file : files) {
             String name = file.getName();
-            if(name.equals(".kiwi") || name.startsWith(".")) continue;
-            if(file.isDirectory()){
-                status(file, indexMap,deletedfiles, modified, untracked);
+            if (name.equals(".kiwi") || name.startsWith(".")) continue;
+            if (file.isDirectory()) {
+                status(file, indexMap, deletedfiles, modified, untracked);
             } else {
                 try {
-                String normalizedPath = normalizePath(file.getPath());
-                String hash = HashUtils.getFileHash(file);
+                    String normalizedPath = normalizePath(file.getPath());
+                    String hash = HashUtils.getFileHash(file);
 
-                if (indexMap.containsKey(normalizedPath)) {
-                    String storedHash = indexMap.get(normalizedPath);
-                    if (!storedHash.equals(hash)) {
-                        modified.add(file.getName());
+                    if (indexMap.containsKey(normalizedPath)) {
+                        String storedHash = indexMap.get(normalizedPath);
+                        if (!storedHash.equals(hash)) {
+                            modified.add(file.getName());
+                        }
+                    } else {
+                        untracked.add(file.getName());
                     }
-                } else {
-                    untracked.add(file.getName());
-                }
 
-            } catch (IOException | NoSuchAlgorithmException e) {
-                System.err.println("[KIWI ERROR] Could not hash file: " + file.getName());
-            }
+                } catch (IOException | NoSuchAlgorithmException e) {
+                    System.err.println("[KIWI ERROR] Could not hash file: " + file.getName());
+                }
             }
         }
     }
 
-    public static void status() {
+    public static void status() throws RepoNotInitializedException, IndexCorruptedException {
         if (!new File(".kiwi").exists()) {
-            System.err.println(Colors.RED + "[KIWI ERROR] Repository not initialized.\nRun 'kiwi init' first." + Colors.RESET);
-            return;
+            throw new RepoNotInitializedException();
         }
-        File indexFile = new File(".kiwi/index/stage.index");
 
+        File indexFile = new File(".kiwi/index/stage.index");
         if (!indexFile.exists()) {
             System.out.println(Colors.RED + "No files have been staged yet!" + Colors.RESET);
             return;
         }
+
         Map<String, String> indexMap = new HashMap<>();
         try {
             List<String> lines = Files.readAllLines(indexFile.toPath());
@@ -251,38 +252,47 @@ class VCSHANDLER extends Helper {
                 indexMap.put(filename, hash);
             }
         } catch (IOException e) {
-            System.err.println("[KIWI ERROR] Could not read index file.");
-            return;
+            throw new IndexCorruptedException(e.getMessage());
         }
+
         ArrayList<String> modified = new ArrayList<>();
         ArrayList<String> untracked = new ArrayList<>();
         ArrayList<String> deletedfiles = new ArrayList<>();
+
         for (String filename : indexMap.keySet()) {
             File f = new File(filename);
             if (!f.exists()) {
                 deletedfiles.add(f.getName());
             }
         }
-        status(new File("."), indexMap,deletedfiles ,modified, untracked);
+
+        status(new File("."), indexMap, deletedfiles, modified, untracked);
+
         System.out.println();
         System.out.println(Colors.CYAN + "======================================" + Colors.RESET);
+
         if (modified.isEmpty() && untracked.isEmpty()) {
             System.out.println(Colors.GREEN + "ALL GOOD" + Colors.RESET);
         }
+
         if (!modified.isEmpty()) {
-                System.out.println(Colors.YELLOW + "\nModified files:" + Colors.RESET);
-                for (String file : modified)
-                    System.out.println(Colors.YELLOW+"   " + file+Colors.RESET);
-        }if (!deletedfiles.isEmpty()) {
-            System.out.println(Colors.BLUE + "\ndeleted files:" + Colors.RESET);
-            for (String file : deletedfiles)
-                System.out.println(Colors.BLUE+"   " + file+Colors.RESET);
+            System.out.println(Colors.YELLOW + "\nModified files:" + Colors.RESET);
+            for (String file : modified)
+                System.out.println(Colors.YELLOW + "   " + file + Colors.RESET);
         }
+
+        if (!deletedfiles.isEmpty()) {
+            System.out.println(Colors.BLUE + "\nDeleted files:" + Colors.RESET);
+            for (String file : deletedfiles)
+                System.out.println(Colors.BLUE + "   " + file + Colors.RESET);
+        }
+
         if (!untracked.isEmpty()) {
             System.out.println(Colors.RED + "\nUntracked files:" + Colors.RESET);
             for (String file : untracked)
-                System.out.println(Colors.RED+"   " + file+Colors.RESET);
+                System.out.println(Colors.RED + "   " + file + Colors.RESET);
         }
+
         System.out.println(Colors.CYAN + "======================================" + Colors.RESET);
     }
 
@@ -293,38 +303,33 @@ class VCSHANDLER extends Helper {
     public static void commit(String[] args) {
         System.out.println("Committed changes to repository");
     }
-
 }
+
 
 public class KIWI {
     public static void main(String[] args) {
         VCSHANDLER vcs = new VCSHANDLER();
 
-        if (args.length == 0) {
-            System.out.println(Colors.RED+"No command provided...\n Try 'kiwi init', 'kiwi add', or 'kiwi commit'\n UwU"+Colors.RESET);
-            return;
-        }
+        try {
+            if (args.length == 0) {
+                throw new InvalidCommandException("No command provided. Try 'kiwi init', 'kiwi add', or 'kiwi commit'.");
+            }
 
-        String command = args[0];
+            String command = args[0];
 
-        switch (command) {
-            case "init":
-                vcs.initRepository();
-                break;
-            case "status":
-                vcs.status();
-                break;
-            case "add":
-                vcs.add(args);
-                break;
-            case "commit":
-                vcs.commit(args);
-                break;
-            case "log":
-                vcs.log();
-                break;
-            default:
-                System.out.println(Colors.YELLOW+"Unknown command: " + command+Colors.RESET);
+            switch (command) {
+                case "init" -> vcs.initRepository();
+                case "status" -> vcs.status();
+                case "add" -> vcs.add(args);
+                case "commit" -> vcs.commit(args);
+                case "log" -> vcs.log();
+                default -> throw new InvalidCommandException(command);
+            }
+
+        } catch (KiwiException e) {
+            System.err.println(Colors.RED + "[KIWI ERROR] " + e.getMessage() + Colors.RESET);
+        } catch (Exception e) {
+            System.err.println(Colors.RED + "[SYSTEM ERROR] " + e.getMessage() + Colors.RESET);
         }
     }
 }
