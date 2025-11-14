@@ -1,17 +1,34 @@
-# KIWI
-KIWI is a custom VCS that provides less clutter and easy and interactive + colorful ( easy to read interface )
 
-## SETUP WINDOWS 
-```
-git clone https://github.com/me-is-mukul/KIWI.git
-cd KIWI
-javac -d . src/*.java errors/*.java utils/*.java
-setx PATH "%PATH%;%cd%"
-```
+![Java](https://img.shields.io/badge/Java-21.0.8-orange)
+![Platform](https://img.shields.io/badge/OS-Windows%20%7C%20Linux%20%7C%20macOS-blue)
+![License](https://img.shields.io/badge/License-MIT-lightgrey)
+![Version](https://img.shields.io/badge/Version-1.0.0-green)
 
+<p align="center">
+  <img src="logo.png" width="200" alt="KIWI Logo"/>
+</p>
 
-## SETUP LINUX 
-```
+# 🥝 KIWI — A Minimal & Colorful Version Control System
+
+**KIWI** is a custom-built **Version Control System (VCS)** that aims to provide a **cleaner, more colorful, and interactive** command-line experience.  
+It’s lightweight, easy to use, and perfect for understanding how VCS tools like Git work under the hood — without all the clutter!
+
+---
+
+##  Features
+- **Colorful Output** — Easy-to-read terminal interface with styled logs and commit history  
+- **Lightweight Design** — No dependencies, built purely in Java  
+
+- **Educational** — Ideal for learning VCS fundamentals like staging, committing, and logging  
+
+- **Cross-Platform** — Works seamlessly on **Windows**, **Linux**, and **macOS**  
+
+---
+
+## Setup Instructions
+
+###  **For Linux**
+```bash
 git clone https://github.com/me-is-mukul/KIWI.git
 cd KIWI
 javac -d . src/*.java errors/*.java utils/*.java
@@ -24,4 +41,14 @@ else
   source ~/.bashrc
 fi
 ```
-# YOUR KIWI SETUP IS DONE... GO TO ANY REPO AND TEST THE CUSTOM VCS ^3^
+
+###  **For Windows**
+```bash
+git clone https://github.com/me-is-mukul/KIWI.git
+cd KIWI
+javac -d . src/*.java errors/*.java utils/*.java
+setx PATH "%PATH%;%cd%"
+```
+
+### Collaborator 
+GitHub: @SaraJain90

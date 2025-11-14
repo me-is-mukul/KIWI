@@ -407,65 +407,6 @@ class VCSHANDLER extends Helper {
                 copyFolder(new File(".kiwi/objects"), commitObjectsDir);
                 copyFolder(new File(".kiwi/index"), commitIndexDir);
 
-                
-                // String readable_timestamp = formatTimestamp(timestampMillis);
-
-                // File indexFile = new File("./kiwi/index/stage.index");
-                // String stagedContent = Files.readString(indexFile.toPath());
-
-                // String parent = "";
-                // File headfile = new File("./kiwi/HEAD");
-                // if (headfile.exists()) {
-                //     parent = Files.readString(headfile.toPath()).trim();
-                // }
-
-
-                // File commitFile = new File(".kiwi/commits/index/" + commitHash + ".commit");
-
-                // StringBuilder commitContent = new StringBuilder();
-                // commitContent.append("hash: ").append(commitHash).append("\n");
-                // commitContent.append("parent: ").append(parent).append("\n");
-                // commitContent.append("timestamp: ").append(readable_timestamp).append("\n");
-                // commitContent.append("message: ").append(message).append("\n");
-                // commitContent.append("files:\n").append(stagedContent).append("\n");
-                // Files.writeString(commitFile.toPath(), commitContent.toString());
-
-                // Files.writeString(indexFile.toPath(), "");
-
-                // String[] lines = stagedContent.split("\n");
-
-                // for (String line : lines) {
-                //     line = line.trim();
-                //     if (line.isEmpty()) {
-                //         continue;
-                //     }
-
-                //     String[] parts = line.split(" ", 2);
-                //     if (parts.length < 2) {
-                //         continue;
-                //     }
-
-                //     String hash = parts[1].trim();
-
-                //     File srcObj = new File(".kiwi/objects/" + hash);
-                //     File destObj = new File(".kiwi/commits/objects/" + hash);
-
-                //     if (srcObj.exists()) {
-                //         Files.copy(srcObj.toPath(), destObj.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                //         Files.deleteIfExists(srcObj.toPath());
-                //     }
-                // }
-
-                // File allCommits = new File(".kiwi/commitsTillDate");
-                // if (!allCommits.exists()) {
-                //     allCommits.createNewFile();
-                // }
-                // Files.writeString(allCommits.toPath(), commitHash + "\n", StandardOpenOption.APPEND);
-
-                // Files.writeString(headfile.toPath(), commitHash);
-
-                // System.out.println(Colors.GREEN + "Commit successful! Commit ID: " + Colors.BLUE + commitHash + Colors.RESET);
-
             }
             catch(Exception e)
         {
@@ -510,21 +451,13 @@ class VCSHANDLER extends Helper {
         }
     }
 }
-
-
-
-
-
 public class KIWI {
-
     public static void main(String[] args) {
         VCSHANDLER vcs = new VCSHANDLER();
-
         try {
             if (args.length == 0) {
                 throw new InvalidCommandException("No command provided. Try 'kiwi init', 'kiwi add', or 'kiwi commit'.");
             }
-
             String command = args[0];
 
             switch (command) {
@@ -541,7 +474,6 @@ public class KIWI {
                 default ->
                     throw new InvalidCommandException(command);
             }
-
         } catch (KiwiException e) {
             System.err.println(Colors.RED + "[KIWI ERROR] " + e.getMessage() + Colors.RESET);
         } catch (Exception e) {
