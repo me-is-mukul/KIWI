@@ -16,10 +16,14 @@ class Helper {
 
         for (String line : content.split("\n")) {
             line = line.trim();
-            if (line.isEmpty()) continue;
+            if (line.isEmpty()) {
+                continue;
+            }
 
             String[] parts = line.split(" ", 2);
-            if (parts.length < 2) continue;
+            if (parts.length < 2) {
+                continue;
+            }
 
             String existingFile = normalizePath(parts[0]);
 
@@ -31,7 +35,9 @@ class Helper {
             }
         }
 
-        if (!replaced) sb.append(normalizedFile).append(" ").append(hash).append("\n");
+        if (!replaced) {
+            sb.append(normalizedFile).append(" ").append(hash).append("\n");
+        }
         return sb.toString();
     }
 
@@ -45,16 +51,22 @@ class Helper {
 
     protected static void removeDeletedFilesFromIndex() throws IndexCorruptedException {
         File indexFile = new File(".kiwi/index/stage.index");
-        if (!indexFile.exists()) return;
+        if (!indexFile.exists()) {
+            return;
+        }
 
         try {
             List<String> lines = Files.readAllLines(indexFile.toPath());
             StringBuilder updatedContent = new StringBuilder();
 
             for (String line : lines) {
-                if (line.trim().isEmpty()) continue;
+                if (line.trim().isEmpty()) {
+                    continue;
+                }
                 String[] parts = line.split(" ", 2);
-                if (parts.length < 2) continue;
+                if (parts.length < 2) {
+                    continue;
+                }
 
                 String filename = normalizePath(parts[0]);
                 String hash = parts[1].trim();
@@ -89,16 +101,21 @@ class Helper {
             indexFile.createNewFile();
 
             String existingContent = "";
-            if (indexFile.length() > 0)
+            if (indexFile.length() > 0) {
                 existingContent = Files.readString(indexFile.toPath());
+            }
 
             String normalizedFile = normalizePath(filename);
             String oldHash = null;
             for (String line : existingContent.split("\n")) {
                 String l = line.trim();
-                if (l.isEmpty()) continue;
+                if (l.isEmpty()) {
+                    continue;
+                }
                 String[] parts = l.split(" ", 2);
-                if (parts.length < 2) continue;
+                if (parts.length < 2) {
+                    continue;
+                }
                 String existingFile = normalizePath(parts[0]);
                 if (existingFile.equals(normalizedFile)) {
                     oldHash = parts[1].trim();
@@ -129,11 +146,15 @@ class Helper {
 
     protected static void addAllFilesRecursively(File dir) throws FileStagingException, ObjectWriteException {
         File[] files = dir.listFiles();
-        if (files == null) return;
+        if (files == null) {
+            return;
+        }
 
         for (File file : files) {
             String name = file.getName();
-            if (name.equals(".kiwi") || name.startsWith(".")) continue;
+            if (name.equals(".kiwi") || name.startsWith(".")) {
+                continue;
+            }
 
             if (file.isDirectory()) {
                 addAllFilesRecursively(file);
@@ -142,8 +163,15 @@ class Helper {
             }
         }
     }
-}
 
+    protected static String formatTimestamp(long millis) {
+        java.text.SimpleDateFormat sdf
+                = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        sdf.setTimeZone(java.util.TimeZone.getDefault()); // your local timezone
+        return sdf.format(new java.util.Date(millis));
+    }
+
+}
 
 class VCSHANDLER extends Helper {
 
@@ -198,13 +226,17 @@ class VCSHANDLER extends Helper {
     }
 
     public static void status(File dir, Map<String, String> indexMap,
-                              ArrayList<String> deletedfiles, ArrayList<String> modified, ArrayList<String> untracked) {
+            ArrayList<String> deletedfiles, ArrayList<String> modified, ArrayList<String> untracked) {
         File[] files = dir.listFiles();
-        if (files == null) return;
+        if (files == null) {
+            return;
+        }
 
         for (File file : files) {
             String name = file.getName();
-            if (name.equals(".kiwi") || name.startsWith(".")) continue;
+            if (name.equals(".kiwi") || name.startsWith(".")) {
+                continue;
+            }
             if (file.isDirectory()) {
                 status(file, indexMap, deletedfiles, modified, untracked);
             } else {
@@ -244,9 +276,13 @@ class VCSHANDLER extends Helper {
             List<String> lines = Files.readAllLines(indexFile.toPath());
             for (String line : lines) {
                 line = line.trim();
-                if (line.isEmpty()) continue;
+                if (line.isEmpty()) {
+                    continue;
+                }
                 String[] parts = line.split(" ", 2);
-                if (parts.length < 2) continue;
+                if (parts.length < 2) {
+                    continue;
+                }
                 String filename = normalizePath(parts[0]);
                 String hash = parts[1].trim();
                 indexMap.put(filename, hash);
@@ -277,36 +313,183 @@ class VCSHANDLER extends Helper {
 
         if (!modified.isEmpty()) {
             System.out.println(Colors.YELLOW + "\nModified files:" + Colors.RESET);
-            for (String file : modified)
+            for (String file : modified) {
                 System.out.println(Colors.YELLOW + "   " + file + Colors.RESET);
+            }
         }
 
         if (!deletedfiles.isEmpty()) {
             System.out.println(Colors.BLUE + "\nDeleted files:" + Colors.RESET);
-            for (String file : deletedfiles)
+            for (String file : deletedfiles) {
                 System.out.println(Colors.BLUE + "   " + file + Colors.RESET);
+            }
         }
 
         if (!untracked.isEmpty()) {
             System.out.println(Colors.RED + "\nUntracked files:" + Colors.RESET);
-            for (String file : untracked)
+            for (String file : untracked) {
                 System.out.println(Colors.RED + "   " + file + Colors.RESET);
+            }
         }
 
         System.out.println(Colors.CYAN + "======================================" + Colors.RESET);
     }
 
+    
+    public static void commit(String[] args)
+            throws RepoNotInitializedException, CommitException {
+
+        try {
+            if (!new File(".kiwi").exists()) {
+                throw new RepoNotInitializedException();
+                }
+            
+                if (args.length < 2) {
+                    System.out.println(Colors.YELLOW + ("Commit message not provided!") + Colors.RESET);
+                    return;
+                }
+
+                File commitObjectsDir = new File(".kiwi/commits/objects");
+                File commitIndexDir = new File(".kiwi/commits/index");
+
+                commitObjectsDir.mkdirs();
+                commitIndexDir.mkdirs();
+
+                String message = String.join(" ", Arrays.copyOfRange(args, 1, args.length)); //DOUBT
+
+                long timestampMillis = System.currentTimeMillis();
+                String timestamp = String.valueOf(timestampMillis);
+                String readable_timestamp = formatTimestamp(timestampMillis);
+
+                File indexFile = new File("./kiwi/index/stage.index");
+                String stagedContent = Files.readString(indexFile.toPath());
+
+                String parent = "";
+                File headfile = new File("./kiwi/HEAD");
+                if (headfile.exists()) {
+                    parent = Files.readString(headfile.toPath()).trim();
+                }
+
+                String commitDataforHash = timestamp + message + stagedContent;
+                String commitHash = CommitHashUtils.generateCommitHash(commitDataforHash);
+
+                File commitFile = new File(".kiwi/commits/index/" + commitHash + ".commit");
+
+                StringBuilder commitContent = new StringBuilder();
+                commitContent.append("hash: ").append(commitHash).append("\n");
+                commitContent.append("parent: ").append(parent).append("\n");
+                commitContent.append("timestamp: ").append(readable_timestamp).append("\n");
+                commitContent.append("message: ").append(message).append("\n");
+                commitContent.append("files:\n").append(stagedContent).append("\n");
+                Files.writeString(commitFile.toPath(), commitContent.toString());
+
+                Files.writeString(indexFile.toPath(), "");
+
+                String[] lines = stagedContent.split("\n");
+
+                for (String line : lines) {
+                    line = line.trim();
+                    if (line.isEmpty()) {
+                        continue;
+                    }
+
+                    String[] parts = line.split(" ", 2);
+                    if (parts.length < 2) {
+                        continue;
+                    }
+
+                    String hash = parts[1].trim();
+
+                    File srcObj = new File(".kiwi/objects/" + hash);
+                    File destObj = new File(".kiwi/commits/objects/" + hash);
+
+                    if (srcObj.exists()) {
+                        Files.copy(srcObj.toPath(), destObj.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                        Files.deleteIfExists(srcObj.toPath());
+                    }
+                }
+
+                File allCommits = new File(".kiwi/commitsTillDate");
+                if (!allCommits.exists()) {
+                    allCommits.createNewFile();
+                }
+                Files.writeString(allCommits.toPath(), commitHash + "\n", StandardOpenOption.APPEND);
+
+                Files.writeString(headfile.toPath(), commitHash);
+
+                System.out.println(Colors.GREEN + "Commit successful! Commit ID: " + Colors.BLUE + commitHash + Colors.RESET);
+
+            }
+            catch(Exception e)
+        {
+            throw new CommitException(e.getMessage()); 
+        }
+        }
+
+        
+
     public static void log() {
-        System.out.println("Displaying commit logs");
+        try {
+            File allCommits = new File(".kiwi/commitsTillDate");
+
+            if (!allCommits.exists() || allCommits.length() == 0) {
+                System.out.println(Colors.YELLOW + "No commits yet!" + Colors.RESET);
+                return;
+            }
+
+            List<String> commitHashes = Files.readAllLines(allCommits.toPath());
+
+            System.out.println(Colors.CYAN + "\n ============ KIWI COMMIT HISTORY ============" + Colors.RESET);
+
+            for (int i = commitHashes.size() - 1; i >= 0; i--) {
+                String hash = commitHashes.get(i).trim();
+
+                if (hash.isEmpty()) {
+                    continue;
+                }
+
+                File commitFile = new File(".kiwi/commits/index/" + hash + ".commit");
+
+                if (!commitFile.exists()) {
+                    System.out.println(Colors.RED + "Missing commit file for hash: " + hash + Colors.RESET);
+                    continue;
+                }
+
+                List<String> lines = Files.readAllLines(commitFile.toPath());
+
+                String date = "";
+                String message = "";
+
+                for (String line : lines) {
+                    if (line.startsWith("timestamp:")) {
+                        date = line.substring(10).trim();
+                    }
+                    if (line.startsWith("message:")) {
+                        message = line.substring(8).trim();
+                    }
+                }
+
+                System.out.println("Hash:     " + Colors.CYAN + hash + Colors.RESET);
+                System.out.println("Timestamp:    " + Colors.MAGENTA + date + Colors.RESET);
+                System.out.println("Message:  " + Colors.YELLOW + message + Colors.RESET);
+
+                System.out.println(Colors.CYAN + " =============================================\n" + Colors.RESET);
+
+            }
+        } catch (Exception e) {
+            System.out.println(Colors.RED + "[KIWI ERROR] Could not read log: " + e.getMessage() + Colors.RESET);
+        }
     }
 
-    public static void commit(String[] args) {
-        System.out.println("Committed changes to repository");
-    }
 }
 
 
+
+
+
+
 public class KIWI {
+
     public static void main(String[] args) {
         VCSHANDLER vcs = new VCSHANDLER();
 
@@ -318,12 +501,18 @@ public class KIWI {
             String command = args[0];
 
             switch (command) {
-                case "init" -> vcs.initRepository();
-                case "status" -> vcs.status();
-                case "add" -> vcs.add(args);
-                case "commit" -> vcs.commit(args);
-                case "log" -> vcs.log();
-                default -> throw new InvalidCommandException(command);
+                case "init" ->
+                    vcs.initRepository();
+                case "status" ->
+                    vcs.status();
+                case "add" ->
+                    vcs.add(args);
+                case "commit" ->
+                    vcs.commit(args);
+                case "log" ->
+                    vcs.log();
+                default ->
+                    throw new InvalidCommandException(command);
             }
 
         } catch (KiwiException e) {
