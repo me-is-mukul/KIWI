@@ -171,6 +171,42 @@ class Helper {
         return sdf.format(new java.util.Date(millis));
     }
 
+    protected static String addContent(File folder) throws IOException {
+        StringBuilder sb = new StringBuilder();
+        File[] files = folder.listFiles();
+        if (files == null) return "";
+
+        for (File file : files) {
+            if (file.isDirectory()) {
+                sb.append(addContent(file));
+            } else {
+                sb.append(file.getName());
+            }
+        }
+        return sb.toString();
+    }
+
+    protected static void copyFolder(File src, File dest) throws IOException {
+        Path source = src.toPath();
+        Path target = dest.toPath();
+
+        Files.walk(source).forEach(path -> {
+            try {
+                Path relative = source.relativize(path);
+                Path destination = target.resolve(relative);
+
+                if (Files.isDirectory(path)) {
+                    Files.createDirectories(destination);
+                } else {
+                    Files.copy(path, destination, StandardCopyOption.REPLACE_EXISTING);
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+
 }
 
 class VCSHANDLER extends Helper {
@@ -349,75 +385,86 @@ class VCSHANDLER extends Helper {
                     return;
                 }
 
-                File commitObjectsDir = new File(".kiwi/commits/objects");
-                File commitIndexDir = new File(".kiwi/commits/index");
+                long timestampMillis = System.currentTimeMillis();
+                String Readable_time = formatTimestamp(timestampMillis);
+
+                String message = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
+
+
+                String content = addContent(new File(".kiwi/objects"));
+                String commitHash = CommitHashUtils.generateCommitHash(content);
+                String CommitName = commitHash + " " + message + " " + Readable_time;
+                
+                File commitDir = new File(".kiwi/commits"+"/"+CommitName);
+                commitDir.mkdirs();
+
+                File commitObjectsDir = new File(".kiwi/commits/"+CommitName+"/objects");
+                File commitIndexDir = new File(".kiwi/commits/"+CommitName+"/index");
 
                 commitObjectsDir.mkdirs();
                 commitIndexDir.mkdirs();
 
-                String message = String.join(" ", Arrays.copyOfRange(args, 1, args.length)); //DOUBT
+                copyFolder(new File(".kiwi/objects"), commitObjectsDir);
+                copyFolder(new File(".kiwi/index"), commitIndexDir);
 
-                long timestampMillis = System.currentTimeMillis();
-                String timestamp = String.valueOf(timestampMillis);
-                String readable_timestamp = formatTimestamp(timestampMillis);
+                
+                // String readable_timestamp = formatTimestamp(timestampMillis);
 
-                File indexFile = new File("./kiwi/index/stage.index");
-                String stagedContent = Files.readString(indexFile.toPath());
+                // File indexFile = new File("./kiwi/index/stage.index");
+                // String stagedContent = Files.readString(indexFile.toPath());
 
-                String parent = "";
-                File headfile = new File("./kiwi/HEAD");
-                if (headfile.exists()) {
-                    parent = Files.readString(headfile.toPath()).trim();
-                }
+                // String parent = "";
+                // File headfile = new File("./kiwi/HEAD");
+                // if (headfile.exists()) {
+                //     parent = Files.readString(headfile.toPath()).trim();
+                // }
 
-                String commitDataforHash = timestamp + message + stagedContent;
-                String commitHash = CommitHashUtils.generateCommitHash(commitDataforHash);
 
-                File commitFile = new File(".kiwi/commits/index/" + commitHash + ".commit");
+                // File commitFile = new File(".kiwi/commits/index/" + commitHash + ".commit");
 
-                StringBuilder commitContent = new StringBuilder();
-                commitContent.append("hash: ").append(commitHash).append("\n");
-                commitContent.append("parent: ").append(parent).append("\n");
-                commitContent.append("timestamp: ").append(readable_timestamp).append("\n");
-                commitContent.append("message: ").append(message).append("\n");
-                commitContent.append("files:\n").append(stagedContent).append("\n");
-                Files.writeString(commitFile.toPath(), commitContent.toString());
+                // StringBuilder commitContent = new StringBuilder();
+                // commitContent.append("hash: ").append(commitHash).append("\n");
+                // commitContent.append("parent: ").append(parent).append("\n");
+                // commitContent.append("timestamp: ").append(readable_timestamp).append("\n");
+                // commitContent.append("message: ").append(message).append("\n");
+                // commitContent.append("files:\n").append(stagedContent).append("\n");
+                // Files.writeString(commitFile.toPath(), commitContent.toString());
 
-                Files.writeString(indexFile.toPath(), "");
+                // Files.writeString(indexFile.toPath(), "");
 
-                String[] lines = stagedContent.split("\n");
+                // String[] lines = stagedContent.split("\n");
 
-                for (String line : lines) {
-                    line = line.trim();
-                    if (line.isEmpty()) {
-                        continue;
-                    }
+                // for (String line : lines) {
+                //     line = line.trim();
+                //     if (line.isEmpty()) {
+                //         continue;
+                //     }
 
-                    String[] parts = line.split(" ", 2);
-                    if (parts.length < 2) {
-                        continue;
-                    }
+                //     String[] parts = line.split(" ", 2);
+                //     if (parts.length < 2) {
+                //         continue;
+                //     }
 
-                    String hash = parts[1].trim();
+                //     String hash = parts[1].trim();
 
-                    File srcObj = new File(".kiwi/objects/" + hash);
-                    File destObj = new File(".kiwi/commits/objects/" + hash);
+                //     File srcObj = new File(".kiwi/objects/" + hash);
+                //     File destObj = new File(".kiwi/commits/objects/" + hash);
 
-                    if (srcObj.exists()) {
-                        Files.copy(srcObj.toPath(), destObj.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                        Files.deleteIfExists(srcObj.toPath());
-                    }
-                }
+                //     if (srcObj.exists()) {
+                //         Files.copy(srcObj.toPath(), destObj.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                //         Files.deleteIfExists(srcObj.toPath());
+                //     }
+                // }
 
-                File allCommits = new File(".kiwi/commitsTillDate");
-                if (!allCommits.exists()) {
-                    allCommits.createNewFile();
-                }
-                Files.writeString(allCommits.toPath(), commitHash + "\n", StandardOpenOption.APPEND);
+                // File allCommits = new File(".kiwi/commitsTillDate");
+                // if (!allCommits.exists()) {
+                //     allCommits.createNewFile();
+                // }
+                // Files.writeString(allCommits.toPath(), commitHash + "\n", StandardOpenOption.APPEND);
 
-                Files.writeString(headfile.toPath(), commitHash);
+                // Files.writeString(headfile.toPath(), commitHash);
 
-                System.out.println(Colors.GREEN + "Commit successful! Commit ID: " + Colors.BLUE + commitHash + Colors.RESET);
+                // System.out.println(Colors.GREEN + "Commit successful! Commit ID: " + Colors.BLUE + commitHash + Colors.RESET);
 
             }
             catch(Exception e)
@@ -426,63 +473,43 @@ class VCSHANDLER extends Helper {
         }
         }
 
-        
-
     public static void log() {
         try {
-            File allCommits = new File(".kiwi/commitsTillDate");
+            File commitsDir = new File(".kiwi/commits");
 
-            if (!allCommits.exists() || allCommits.length() == 0) {
+            File[] commitFolders = commitsDir.listFiles(File::isDirectory);
+            if (commitFolders == null || commitFolders.length == 0) {
                 System.out.println(Colors.YELLOW + "No commits yet!" + Colors.RESET);
                 return;
             }
-
-            List<String> commitHashes = Files.readAllLines(allCommits.toPath());
+            Arrays.sort(commitFolders, Comparator.comparing(File::getName).reversed());
 
             System.out.println(Colors.CYAN + "\n ============ KIWI COMMIT HISTORY ============" + Colors.RESET);
 
-            for (int i = commitHashes.size() - 1; i >= 0; i--) {
-                String hash = commitHashes.get(i).trim();
+            for (File folder : commitFolders) {
 
-                if (hash.isEmpty()) {
+                String name = folder.getName().trim();
+
+                String[] parts = name.split(" ", 3);
+                if (parts.length < 3) {
                     continue;
                 }
 
-                File commitFile = new File(".kiwi/commits/index/" + hash + ".commit");
-
-                if (!commitFile.exists()) {
-                    System.out.println(Colors.RED + "Missing commit file for hash: " + hash + Colors.RESET);
-                    continue;
-                }
-
-                List<String> lines = Files.readAllLines(commitFile.toPath());
-
-                String date = "";
-                String message = "";
-
-                for (String line : lines) {
-                    if (line.startsWith("timestamp:")) {
-                        date = line.substring(10).trim();
-                    }
-                    if (line.startsWith("message:")) {
-                        message = line.substring(8).trim();
-                    }
-                }
+                String hash = parts[0].trim();
+                String message = parts[1].trim();
+                String date = parts[2].trim();
 
                 System.out.println("Hash:     " + Colors.CYAN + hash + Colors.RESET);
                 System.out.println("Timestamp:    " + Colors.MAGENTA + date + Colors.RESET);
                 System.out.println("Message:  " + Colors.YELLOW + message + Colors.RESET);
-
                 System.out.println(Colors.CYAN + " =============================================\n" + Colors.RESET);
-
             }
+
         } catch (Exception e) {
             System.out.println(Colors.RED + "[KIWI ERROR] Could not read log: " + e.getMessage() + Colors.RESET);
         }
     }
-
 }
-
 
 
 
