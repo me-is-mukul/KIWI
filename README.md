@@ -50,5 +50,27 @@ javac -d . src/*.java errors/*.java utils/*.java
 setx PATH "%PATH%;%cd%"
 ```
 
+## USAGE SCREENSHOTS
+
+### Initialising and Status
+<p align="left">
+  <img src="images/1.png" width="250" alt="KIWI Logo"/>
+</p>
+
+### Add before modi-fication
+<p align="left">
+  <img src="images/2.png" width="250" alt="KIWI Logo"/>
+</p>
+
+### Add after modi-fication
+<p align="left">
+  <img src="images/3.png" width="250" alt="KIWI Logo"/>
+</p>
+
+### Commit
+<p align="left">
+  <img src="images/4.png" width="250" alt="KIWI Logo"/>
+</p>
+
 ### Collaborator 
 GitHub: @SaraJain90
