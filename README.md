@@ -72,5 +72,10 @@ setx PATH "%PATH%;%cd%"
   <img src="images/4.png" width="250" alt="KIWI Logo"/>
 </p>
 
+### LOGS
+<p align="left">
+  <img src="images/5.png" width="250" alt="KIWI Logo"/>
+</p>
+
 ### Collaborator 
 GitHub: @SaraJain90
