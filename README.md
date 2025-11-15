@@ -57,12 +57,12 @@ setx PATH "%PATH%;%cd%"
   <img src="images/1.png" width="250" alt="KIWI Logo"/>
 </p>
 
-### Add before modi-fication
+### Add before modification
 <p align="left">
   <img src="images/2.png" width="250" alt="KIWI Logo"/>
 </p>
 
-### Add after modi-fication
+### Add after modification
 <p align="left">
   <img src="images/3.png" width="250" alt="KIWI Logo"/>
 </p>
@@ -72,7 +72,7 @@ setx PATH "%PATH%;%cd%"
   <img src="images/4.png" width="250" alt="KIWI Logo"/>
 </p>
 
-### LOGS
+### Logs
 <p align="left">
   <img src="images/5.png" width="250" alt="KIWI Logo"/>
 </p>
